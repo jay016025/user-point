@@ -1,0 +1,288 @@
+{
+  "info": {
+    "_postman_id": "cd58923e-774e-481c-85a8-8f4ddb21cc4b",
+    "name": "User Points Service",
+    "description": "啟動專案後，將此 JSON 匯入 Postman。預設 baseUrl 為 http://localhost:8080，可在 Collection Variables 修改。依 1～5 順序執行：新增、查總積分、查排行榜、修改原因、刪除積分。新增成功會自動保存 recordId；單獨執行修改時，請先填入有效紀錄 ID。刪除為邏輯刪除，保留歷史紀錄。",
+    "schema": "https://schema.postman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "API 根網址，不含結尾斜線"
+    },
+    {
+      "key": "userId",
+      "value": "postman_user_001",
+      "type": "string",
+      "description": "測試使用者 ID"
+    },
+    {
+      "key": "recordId",
+      "value": "",
+      "type": "string",
+      "description": "新增成功後自動填入，也可手動設定既有紀錄 ID"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. 新增加分",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/points",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "points"
+          ]
+        },
+        "description": "增加使用者積分；成功後自動保存回應的 data.id 到 Collection 變數 recordId，供修改原因使用。",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 100,\n  \"reason\": \"postman_test\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"recordId\", \"\");"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test(\"success = true\", function () {",
+              "    pm.expect(body.success).to.eql(true);",
+              "});",
+              "if (pm.response.code === 201 && body.success && body.data && body.data.id != null) {",
+              "    pm.collectionVariables.set(\"recordId\", String(body.data.id));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "2. 查詢總積分",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/points/{{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "points",
+            "{{userId}}"
+          ]
+        },
+        "description": "查詢使用者目前總積分。"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test(\"success = true\", function () {",
+              "    pm.expect(body.success).to.eql(true);",
+              "});",
+              "pm.test(\"回傳指定使用者\", function () {",
+              "    pm.expect(body.data.userId).to.eql(pm.variables.get(\"userId\"));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "3. 查詢 Top 10 排行榜",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/points/leaderboard",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "points",
+            "leaderboard"
+          ]
+        },
+        "description": "取得最多 10 位使用者的排行榜，依總積分遞減排序。"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test(\"success = true\", function () {",
+              "    pm.expect(body.success).to.eql(true);",
+              "});",
+              "pm.test(\"排行榜最多 10 位\", function () {",
+              "    pm.expect(Array.isArray(body.data.entries)).to.eql(true);",
+              "    pm.expect(body.data.entries.length <= 10).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "4. 修改積分原因",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/points/{{recordId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "points",
+            "{{recordId}}"
+          ]
+        },
+        "description": "修改指定積分紀錄的原因；recordId 由第 1 隻 API 自動填入。",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"postman_updated_reason\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test(\"success = true\", function () {",
+              "    pm.expect(body.success).to.eql(true);",
+              "});",
+              "pm.test(\"回傳指定紀錄\", function () {",
+              "    pm.expect(String(body.data.id)).to.eql(pm.variables.get(\"recordId\"));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "5. 刪除使用者積分",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/points/{{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "points",
+            "{{userId}}"
+          ]
+        },
+        "description": "將使用者總積分歸零並邏輯刪除有效明細，清除相關快取與排行榜。"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test(\"success = true\", function () {",
+              "    pm.expect(body.success).to.eql(true);",
+              "});",
+              "pm.test(\"回傳指定使用者\", function () {",
+              "    pm.expect(body.data.userId).to.eql(pm.variables.get(\"userId\"));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    }
+  ]
+}
